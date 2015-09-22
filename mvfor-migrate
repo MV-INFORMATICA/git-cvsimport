@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+  then
+    echo "No argument supplied"
+    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+    exit 1
+fi
+
+project_name=$(echo $1 | cut -d'/' -f 1)
+
+project_inited=$(ls ${project_name}/.git)
+
+if [ -n "$project_inited" ]; then
+  read -r -p "Projeto já contém um repositório GIT, deseja clonar-lo novamente? [y/N] " response
+  case $response in
+    [yY][eE][sS]|[yY])
+       project_inited=""
+  esac
+fi
+
+if [ -z "$project_inited" ]; then
+
+  git clone git@romeo.mvfor.local:mvfor-flex/${project_name}.git ${project_name}-git
+
+  project_inited=$(ls ${project_name}-git/)
+
+  if [ -n "$project_inited" ]; then
+    echo "Copiando o repositório GIT: $project_name"
+    mv ${project_name}-git/.git/ ${project_name}/.git/
+  fi
+
+  rm -rf ${project_name}-git
+
+  cd $project_name
+
+  if [ -n "$project_inited" ]; then
+    for remote in `git branch -r`
+       do
+         remotename=$(echo $remote | cut -d'/' -f 2)
+         if [ "$remotename" != "->" ] && [ "$remotename" != "HEAD" ]; then 
+           if [ -n "$(git branch | grep $remotename)"  ]
+              then
+                echo "Branch $remotename já existe no repositório local"
+              else
+                git branch $remotename --track $remote
+           fi
+         fi
+    done
+
+    git fetch --all
+    git pull --all
+
+    if [ -z "$(git branch | grep origin)" ]
+       then
+       git checkout -b origin
+    fi
+
+    git checkout -f master
+  fi
+else
+  cd $project_name
+  git checkout -f master
+fi
+
+git cvsimport -a
+
+read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
+case $response in
+    [yY][eE][sS]|[yY]) 
+        if [ -z "$(git remote)" ]; then
+           echo "Incluindo configuração do repositório remoto"
+           git remote add origin git@romeo.mvfor.local:mvfor-flex/${project_name}.git
+        fi
+        git push --all
+        git push --tags
+        ;;
+esac
