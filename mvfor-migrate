@@ -37,7 +37,7 @@ if [ -z "$project_inited" ]; then
   if [ -n "$project_inited" ]; then
     for remote in `git branch -r`
        do
-         remotename=$(echo $remote | cut -d'/' -f 2)
+         remotename=$(echo $remote | cut -d'/' -f 2,3,4,5,6)
          if [ "$remotename" != "->" ] && [ "$remotename" != "HEAD" ]; then 
            if [ -n "$(git branch | grep $remotename)"  ]
               then
