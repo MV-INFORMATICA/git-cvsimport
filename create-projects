@@ -1,0 +1,14 @@
+#!/bin/bash -ex
+
+# Something like https://yourhost/api/v3
+ENDPOINT=$1
+TOKEN=$2
+GROUP_NAME=$(echo $3 | cut -d'/' -f1)
+PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
+
+export API="curl --fail -sk -H 'Content-Type:application/json' $ENDPOINT"
+
+namespace_id=$(eval ${API}"/groups/${GROUP_NAME}?private_token=${TOKEN}" | jq -a '.id')
+
+eval ${API}/projects?private_token=$TOKEN -d \'{ \"name\":\"${PROJECT_NAME}\",\"namespace_id\":\"$namespace_id\"}\'
+

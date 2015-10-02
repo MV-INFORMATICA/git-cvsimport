@@ -11,6 +11,13 @@ project_name=$(echo $1 | cut -d'/' -f 1)
 project_inited=$(ls ${project_name})
 project_remote=git@git.mv.com.br:$2/${project_name}.git
 
+if [ -z "$3" ]; 
+  then
+    ignored_files="cli_.*/|bin/"
+  else
+    ignored_files="$3"
+fi
+
 if [ -z "$project_inited" ]; then
   cvs update -RCAd $project_name
 fi
@@ -69,7 +76,10 @@ else
   git checkout -f master
 fi
 
-git cvsimport -a -S 'cli_.*/|bin/'
+git cvsimport -a -S $ignored_files
+
+
+echo $3
 
 read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
 case $response in
@@ -78,9 +88,18 @@ case $response in
            echo "Incluindo configuração do repositório remoto"
            git remote add origin $project_remote
         fi
-        git checkout V1-0
-        git tag v01.287.0
-        git checkout -b develop
-        git push origin V1-0:master develop v01.287.0	
+        if ! git ls-remote origin ; then
+           create-projects $GITLAB_ENDPOINT $TOKEN $2/$project_name
+        fi
+	if [[  "$2" == soulmv-* ]]; 
+          then
+            git checkout V1-0
+            git tag v01.287.0
+            git checkout -b develop
+            git push origin V1-0:master develop v01.287.0
+          else
+            git push --all
+            git push --tags
+        fi
         ;;
 esac
