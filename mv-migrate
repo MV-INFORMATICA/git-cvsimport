@@ -1,41 +1,48 @@
 #!/bin/bash
 
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
 if [ -z "$1" ] || [ -z "$2" ] 
   then
-    echo "No argument supplied"
     echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+    echo "ex:  mv-migrate <project_name> <group_name>"
+    echo ""
     exit 1
 fi
 
+#Definindo variáveis
 project_name=$(echo $1 | cut -d'/' -f 1)
 project_inited=$(ls ${project_name})
 project_remote=git@git.mv.com.br:$2/${project_name}.git
 
-if [ -z "$3" ]; 
+#Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
+#o 3 parâmetro <skip_pattern>.
+if [ -z "$3" ] && [ "$2" == soulmv-* ]; 
   then
     ignored_files="cli_.*/|bin/"
   else
     ignored_files="$3"
 fi
 
+#RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
 if [ -z "$project_inited" ]; then
   cvs update -RCAd $project_name
 fi
 
+#RN2 - Verifica se já existe uma importação anterior no repositório local.
 project_inited=$(ls ${project_name}/.git)
 
+#RN2 - Caso haja, pergunta se o usuário deseja ignorar e realizar o download novamente.
 if [ -n "$project_inited" ]; then
-  read -r -p "Projeto já contém um repositório GIT, deseja clonar-lo novamente? [y/N] " response
+  read -r -p "Projeto já contém um repositório GIT local, deseja ignora-lo e clonar-lo novamente? [y/N] " response
   case $response in
     [yY][eE][sS]|[yY])
        project_inited=""
   esac
 fi
 
+#RN2.1 - Clone no repositório existente de uma importação anterior.
 if [ -z "$project_inited" ]; then
-
   git clone $project_remote ${project_name}-git
-
   project_inited=$(ls ${project_name}-git/)
 
   if [ -n "$project_inited" ]; then
@@ -44,9 +51,9 @@ if [ -z "$project_inited" ]; then
   fi
 
   rm -rf ${project_name}-git
-
   cd $project_name
 
+#RN2.1 - Download de todas as branches remotas.
   if [ -n "$project_inited" ]; then
     for remote in `git branch -r`
        do
@@ -76,11 +83,10 @@ else
   git checkout -f master
 fi
 
+#RN3 - Importação do repositório CVS para GIT, com os parâmetros ``-a`` (todos os commits) e ``-S <skip_pattern>``.
 git cvsimport -a -S $ignored_files
 
-
-echo $3
-
+#RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
 read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
 case $response in
     [yY][eE][sS]|[yY]) 
@@ -88,10 +94,14 @@ case $response in
            echo "Incluindo configuração do repositório remoto"
            git remote add origin $project_remote
         fi
+
+#RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
         if ! git ls-remote origin ; then
            create-projects $GITLAB_ENDPOINT $TOKEN $2/$project_name
         fi
-	if [[  "$2" == soulmv-* ]]; 
+#RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
+#como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
+	      if [[  "$2" == soulmv-* ]]; 
           then
             git checkout V1-0
             git tag v01.287.0
