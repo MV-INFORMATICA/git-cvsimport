@@ -6,6 +6,7 @@ Script de importação dos repositórios CVS para GIT da MVFOR
  - linux
  - ssh
  - cvs
+ - JQ
  - git
  - git-cvs
  - git-lab API V3
