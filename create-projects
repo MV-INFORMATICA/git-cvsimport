@@ -1,7 +1,7 @@
 #!/bin/bash -ex
 
 # Something like https://yourhost/api/v3
-ENDPOINT=$1
+ENDPOINT=$1/api/v3
 TOKEN=$2
 GROUP_NAME=$(echo $3 | cut -d'/' -f1)
 PROJECT_NAME=$(echo $3 | cut -d'/' -f2)

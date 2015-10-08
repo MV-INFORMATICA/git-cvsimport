@@ -6,6 +6,7 @@ if [ -z "$1" ] || [ -z "$2" ]
     echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
     echo "ex:  mv-migrate <project_name> <group_name>"
     echo ""
+    pwd
     exit 1
 fi
 
@@ -99,21 +100,21 @@ case $response in
 
 #RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
         if ! git ls-remote origin ; then
-           ./create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
+           $GITCVS_HOME/create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
         fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
 	if [[  "$group_name" == soulmv-* ]]; 
           then
             git checkout V1-0
-            git tag v01.287.0
+            git tag -a v01.287.0 -m 'Versão 01.287.0 - Migração do CVS'
             git checkout -b develop
             git push origin V1-0:master develop v01.287.0
-            ./protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
+	    $GITCVS_HOME/protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
           else
             git push --all
             git push --tags
-	    ./protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
+            $GITCVS_HOME/protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
         fi
         ;;
 esac
