@@ -1,0 +1,16 @@
+#!/bin/bash -ex
+
+# Something like https://yourhost/api/v3
+ENDPOINT=$1/api/v3
+TOKEN=$2
+GROUP_NAME=$(echo $3 | cut -d'/' -f1)
+PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
+
+ARGS=("$@")
+#ELEMENTS=$(($#-3))
+
+export API="curl --fail -sk -H 'Content-Type:application/json' -X PUT $ENDPOINT"
+
+for (( i=3;i<$#; i++)); do
+	eval ${API}/projects/${GROUP_NAME}%2F${PROJECT_NAME}/repository/branches/${ARGS[${i}]}/protect?private_token=$TOKEN
+done
