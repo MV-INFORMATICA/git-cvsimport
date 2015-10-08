@@ -91,7 +91,7 @@ else
 fi
 
 #RN3 - Importação do repositório CVS para GIT, com os parâmetros ``-a`` (todos os commits) e ``-S <skip_pattern>``.
-git cvsimport -a -S $ignored_files
+git cvsimport -a -i -S $ignored_files
 
 #RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
 read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
