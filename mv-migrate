@@ -10,13 +10,15 @@ if [ -z "$1" ] || [ -z "$2" ]
 fi
 
 #Definindo variáveis
+endpoint_url=$(echo $GITLAB_ENDPOINT | cut -d'/' -f3)
+group_name=$2
 project_name=$(echo $1 | cut -d'/' -f 1)
 project_inited=$(ls ${project_name})
-project_remote=git@git.mv.com.br:$2/${project_name}.git
+project_remote=git@${endpoint_url}:$group_name/${project_name}.git
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
 #o 3 parâmetro <skip_pattern>.
-if [ -z "$3" ] && [ "$2" == soulmv-* ]; 
+if [ -z "$3" ] && [[ "$group_name" == soulmv-* ]]; 
   then
     ignored_files="cli_.*/|bin/"
   else
@@ -97,19 +99,21 @@ case $response in
 
 #RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
         if ! git ls-remote origin ; then
-           create-projects $GITLAB_ENDPOINT $TOKEN $2/$project_name
+           ./create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
         fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
-	      if [[  "$2" == soulmv-* ]]; 
+	if [[  "$group_name" == soulmv-* ]]; 
           then
             git checkout V1-0
             git tag v01.287.0
             git checkout -b develop
             git push origin V1-0:master develop v01.287.0
+            ./protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
           else
             git push --all
             git push --tags
+	    ./protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
         fi
         ;;
 esac
