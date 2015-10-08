@@ -3,34 +3,33 @@ Script de importação dos repositórios CVS para GIT da MVFOR
 
 
 ## Requisitos
- - linux
- - ssh
- - cvs
- - JQ
- - git
- - git-cvs
- - git-lab API V3
+ - Ferramentas de gerenciamento:
+   - Git-Lab (API V3)
+ - Aplicações instaladas Package Manager (Linux):
+   - ssh (protocol v1 e v2)
+   - cvs 
+   - git
+   - git-cvs
+   - JQ
  
 ## Instalação
 
 Download e associação dos executáveis no bash
 
-````bash
+```bash
 git clone git@github.com:MV-INFORMATICA/git-cvsimport.git
 ln -s git-cvsimport/mv-migrate ~/bin/
-ln -s git-cvsimport/create-projects ~/bin/
-````
+```
 
 **OBS:** Caso não exista a pasta ``~/bin`` dentro da pasta ``$HOME (~/)`` é necessário 
 realizar logout e login novamente, para que seja as referências do ``$PATH`` sejam 
 atualizadas, conforme o código padrão do arquivo ``.profile``.
 
 ## Configuração
-
 ```bash
 export $CVS_RSH=ssh-one
-export $TOKEN=<your gitlab api token>
-export $GITLAB_ENDPOINT=<https://yoururl/v3/api>
+export $GITLAB_TOKEN=your gitlab api token
+export $GITLAB_ENDPOINT=https://your.gitlab.url
 ```
 
 ## Regras de negócio atendidas
@@ -49,8 +48,19 @@ export $GITLAB_ENDPOINT=<https://yoururl/v3/api>
       - develop
     -  Tags:
       - v01.287.0
+  - **RN7** Registra no repositório remote as branches ``develop`` e ``master`` como branches protegidas;
 
-## Exemplo de utilização
+## Utilização
+
+### 1. Checkout do repositório CVS
+O primeiro passo do processo de migração e a recuperação do repositório do CVS para a máquina local, 
+não há necessidade de recuperar todo o modulo do CVS recursivamente com todas os submodulos, 
+pois o submodulos desejado para a migração será atualizado durante o processo de importação.
+
+Por exemplo para a estrutura baixao, onde cada submodulo do CVS representa um projeto diferente é necessário realizar somente o checkout do modulo superior
+
+
+
 ```bash
 mv-migrate <project_name> <group_name> <skip_pattern>
 ```
