@@ -6,9 +6,10 @@ Script de importação dos repositórios CVS para GIT da MVFOR
  - linux
  - ssh
  - cvs
+ - JQ
  - git
  - git-cvs
- - git-lab
+ - git-lab API V3
  
 ## Instalação
 
@@ -27,6 +28,7 @@ atualizadas, conforme o código padrão do arquivo ``.profile``.
 ## Configuração
 
 ```bash
+export $CVS_RSH=ssh-one
 export $TOKEN=<your gitlab api token>
 export $GITLAB_ENDPOINT=<https://yoururl/v3/api>
 ```
