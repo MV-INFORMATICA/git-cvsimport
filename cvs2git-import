@@ -1,19 +1,33 @@
 #!/bin/bash
+#### Description: Realiza a importação do CVS para GIT através da API "cvs2git"
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
+
+set -o errexit
+set -o pipefail
+set -o nounset
 
 project_name=$1
 
-scp -1 -r juliotobias@192.168.1.8:/u01/cvs/rps-rec/mvrec/produtos_mv/src/com/mvsistemas/mv2000/$project_name cvs-repo/$project_name
+## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
+scp -1 -r ${CVS_USER}@192.168.1.8:/u01/cvs/rps-rec/mvrec/produtos_mv/src/com/mvsistemas/mv2000/$project_name cvs-repo/$project_name
 
+## RN-02: Gera os dumps de importação do CVS para SVN.
 mkdir cvs2svn-tmp
 
 cvs2git --blobfile=cvs2svn-tmp/git-${project_name}-blob.dat --dumpfile=cvs2svn-tmp/git-${project_name}-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  cvs-repo/$project_name/
 
+## RN-03: Cria o repositório local GIT.
 mkdir git-repo/$project_name/
 cd git-repo/$project_name/
 git init
+
+## RN-04: Importa os dumps do SVN para o repositório local GIT.
 cat ../../cvs2svn-tmp/git-${project_name}-blob.dat ../../cvs2svn-tmp/git-${project_name}-dump.dat | git fast-import
 
+## RN-05: Conclusão da importação, mudança para branch master.
 git checkout
 
-cd ../../
-rm -rf cvs2svn-tmp
+#cd ../../
+#rm -rf cvs2svn-tmp

@@ -1,10 +1,35 @@
-#!/bin/bash -ex
+#!/bin/bash
+#### Description: Cria o repositório remoto (projeto) no GitLab
+#### Requirements: 
+####   - curl
+####   - jq
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
-# Something like https://yourhost/api/v3
+set -o errexit
+set -o pipefail
+set -o nounset
+
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+	echo "ex:  create-project <GITLAB_ENDPOINT> <GITLAB_TOKEN> <GROUP_NAME/PROJECT_NAME>"
+	echo ""
+	exit 1
+fi
+
+# Something like https://yourhost
 ENDPOINT=$1/api/v3
 TOKEN=$2
 GROUP_NAME=$(echo $3 | cut -d'/' -f1)
 PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
+
+
+echo "#### Criando repositório remoto"
+echo "### GitLab:	${1}"
+echo "### Group Name:	${GROUP_NAME}"
+echo "### Project Name:	${PROJECT_NAME}"
 
 export API="curl --fail -sk -H 'Content-Type:application/json' $ENDPOINT"
 
@@ -12,3 +37,7 @@ namespace_id=$(eval ${API}"/groups/${GROUP_NAME}?private_token=${TOKEN}" | jq -a
 
 eval ${API}/projects?private_token=$TOKEN -d \'{ \"name\":\"${PROJECT_NAME}\",\"namespace_id\":\"$namespace_id\"}\'
 
+echo ""
+echo "============================================="
+echo "=      Repositório criado com Sucesso       ="
+echo "============================================="

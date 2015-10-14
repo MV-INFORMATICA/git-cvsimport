@@ -1,4 +1,22 @@
-#!/bin/bash -ex
+#!/bin/bash 
+#### Description: Protege as branches informadas no repositório remoto - GitLab
+#### Requirements: 
+####   - curl
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	echo "Selecione as branches do projeto para realizar a o procedimento:"
+	echo "ex:  protect-branches <GITLAB_ENDPOINT> <GITLAB_TOKEN> [<BRANCHES>]"
+	echo ""
+	exit 1
+fi
 
 # Something like https://yourhost/api/v3
 ENDPOINT=$1/api/v3
@@ -7,10 +25,21 @@ GROUP_NAME=$(echo $3 | cut -d'/' -f1)
 PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
 
 ARGS=("$@")
-#ELEMENTS=$(($#-3))
+
+echo "#### Criando repositório remoto"
+echo "### GitLab:       ${1}"
+echo "### Group Name:   ${GROUP_NAME}"
+echo "### Project Name: ${PROJECT_NAME}"
 
 export API="curl --fail -sk -H 'Content-Type:application/json' -X PUT $ENDPOINT"
 
 for (( i=3;i<$#; i++)); do
+	echo "### Protecting branch: ${ARGS[${i}]}"
 	eval ${API}/projects/${GROUP_NAME}%2F${PROJECT_NAME}/repository/branches/${ARGS[${i}]}/protect?private_token=$TOKEN
 done
+
+echo ""
+echo "============================================="
+echo "=      Branches protegidas com Sucesso      ="
+echo "============================================="
+

@@ -1,4 +1,12 @@
 #!/bin/bash
+#### Description: Realiza a importação do CVS para GIT, com as APIs "git cvsimport" e "cvs2git"
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
+
+set -o errexit
+set -o pipefail
+set -o nounset
 
 echo "============================================="
 echo "= Executando a importação do CVS para GIT   ="
@@ -18,7 +26,7 @@ endpoint_url=$(echo $GITLAB_ENDPOINT | cut -d'/' -f3) #Ex: https://git.mv.com.br
 group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
-project_inited=$(ls ${project_name})
+project_inited=${project_name}
 project_remote=git@${endpoint_url}:$group_name/${project_name}.git
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
@@ -31,15 +39,13 @@ if [ -z "$4" ] && [[ "$group_name" == soulmv-* ]];
 fi
 
 #RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
-if [ -z "$project_inited" ]; then
+if [ ! -d "$project_name" ]; then
   cvs update -RCAd $project_name
 fi
 
 #RN2 - Verifica se já existe uma importação anterior no repositório local.
-project_inited=$(ls ${project_name}/.git)
-
 #RN2 - Caso haja, pergunta se o usuário deseja ignorar e realizar o download novamente.
-if [ -n "$project_inited" ]; then
+if [ -d "${project_name}/.git" ]; then
   read -r -p "Projeto já contém um repositório GIT local, deseja ignora-lo e clonar-lo novamente? [y/N] " response
   case $response in
     [yY][eE][sS]|[yY])
@@ -49,19 +55,21 @@ fi
 
 #RN2.1 - Clone no repositório existente de uma importação anterior.
 if [ -z "$project_inited" ]; then
-  git clone $project_remote ${project_name}-git
-  project_inited=$(ls ${project_name}-temp-git/)
+	if git ls-remote $project_remote; then
+		project_inited=${project_name}-temp-git/
+		git clone $project_remote ${project_inited}
+	fi
 
-  if [ -n "$project_inited" ]; then
-    echo "Copiando o repositório GIT: $project_name"
-    mv ${project_name}-temp-git/.git/ ${project_name}/.git/
-  fi
+	if [ -d "$project_inited" ]; then
+		echo "Copiando o repositório GIT: $project_name"
+		mv ${project_inited}/.git/ ${project_name}/.git/
+	fi
 
-  rm -rf ${project_name}-temp-git
+  rm -rf ${project_inited}
   cd $project_name
 
 #RN2.1 - Download de todas as branches remotas.
-  if [ -n "$project_inited" ]; then
+  if [ -d "$project_inited" ]; then
     for remote in `git branch -r`
        do
          remotename=$(echo $remote | cut -d'/' -f 2,3,4,5,6)
