@@ -117,6 +117,7 @@ case $response in
             git tag -a v$project_version -m "Versão $project_version - Migração do CVS"
             git checkout -b develop
             git push origin V1-0:master develop v$project_version
+            git push origin MV2GIT
 	    $GITCVS_HOME/protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
           else
             git push --all

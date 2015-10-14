@@ -1,0 +1,19 @@
+#!/bin/bash
+
+project_name=$1
+
+scp -1 -r juliotobias@192.168.1.8:/u01/cvs/rps-rec/mvrec/produtos_mv/src/com/mvsistemas/mv2000/$project_name cvs-repo/$project_name
+
+mkdir cvs2svn-tmp
+
+cvs2git --blobfile=cvs2svn-tmp/git-${project_name}-blob.dat --dumpfile=cvs2svn-tmp/git-${project_name}-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  cvs-repo/$project_name/
+
+mkdir git-repo/$project_name/
+cd git-repo/$project_name/
+git init
+cat ../../cvs2svn-tmp/git-${project_name}-blob.dat ../../cvs2svn-tmp/git-${project_name}-dump.dat | git fast-import
+
+git checkout
+
+cd ../../
+rm -rf cvs2svn-tmp
