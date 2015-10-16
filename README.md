@@ -1,5 +1,5 @@
 # git-cvsimport
-Script de importação dos repositórios CVS para GIT da MVFOR
+10/2015 - Script de importação dos repositórios CVS para GIT da MVFOR
 
 
 ## Requisitos
