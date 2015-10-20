@@ -43,11 +43,11 @@ if [ -n "$skip_pattern" ]; then
 	echo "###################################"
 	echo "### Exportando para o repo remoto"
 	echo "### Pattern: \"(?:${skip_pattern})\""
-
+	
 	cd cvs-repo/$project_name
 	ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})")
-	for files in "${ignore_list[@]}"; do
-		rm -rvf "$files"
+	for files in "${ignore_list}"; do
+		rm -rf $files
 	done
 	cd ../../
 fi
