@@ -8,15 +8,35 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-project_name=$1
+echo "============================================="
+echo "= Executando a importação  - Cvs2Git        ="
+echo "============================================="
+
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
+  then
+    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+    echo "ex:  cvs2git-import <group_name> <project_name> <cvs_module>"
+    echo ""
+    exit 1
+fi
+
+group_name=$1
+project_name=$2
+cvs_module=$3
+cvs_root=/u01/cvs/rps-rec/
 
 ## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
-scp -1 -r ${CVS_USER}@192.168.1.8:/u01/cvs/rps-rec/mvrec/produtos_mv/src/com/mvsistemas/mv2000/$project_name cvs-repo/$project_name
+if ! [ -d "cvs-repo" ]; then
+    mkdir cvs-repo
+fi
+
+scp -1 -r ${CVS_USER}@192.168.1.8:${cvs_root}${cvs_module}/$project_name cvs-repo/$project_name
 
 ## RN-02: Gera os dumps de importação do CVS para SVN.
-mkdir cvs2svn-tmp
+mkdir cvs2svn-${project_name}-tmp
 
-cvs2git --blobfile=cvs2svn-tmp/git-${project_name}-blob.dat --dumpfile=cvs2svn-tmp/git-${project_name}-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  cvs-repo/$project_name/
+cvs2git --blobfile=cvs2svn-${project_name}-tmp/git-blob.dat --dumpfile=cvs2svn-${project_name}-tmp/git-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  cvs-repo/$project_name/
 
 ## RN-03: Cria o repositório local GIT.
 mkdir git-repo/$project_name/
@@ -24,10 +44,10 @@ cd git-repo/$project_name/
 git init
 
 ## RN-04: Importa os dumps do SVN para o repositório local GIT.
-cat ../../cvs2svn-tmp/git-${project_name}-blob.dat ../../cvs2svn-tmp/git-${project_name}-dump.dat | git fast-import
+cat ../../cvs2svn-${project_name}-tmp/git-blob.dat ../../cvs2svn-${project_name}-tmp/git-dump.dat | git fast-import
 
 ## RN-05: Conclusão da importação, mudança para branch master.
 git checkout
 
 #cd ../../
-#rm -rf cvs2svn-tmp
+#rm -rf cvs2svn-${project_name}-tmp

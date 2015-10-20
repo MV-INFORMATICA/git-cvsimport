@@ -1,0 +1,109 @@
+#!/bin/bash
+#### Description: Realiza a importação do CVS para GIT através da API "cvsimport"
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+echo "============================================="
+echo "= Executando a importação  - Git CvsImport  ="
+echo "============================================="
+
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
+  then
+    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+    echo "ex:  git-cvsimport <group_name> <project_name> <cvs_module>"
+    echo ""
+    exit 1
+fi
+
+group_name=$1
+project_name=$2
+cvs_module=$3
+project_inited=${project_name}
+
+#RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
+if [ ! -d "$project_name" ]; then
+  cvs update -RCAd $project_name
+fi
+
+#RN2 - Verifica se já existe uma importação anterior no repositório local.
+#RN2 - Caso haja, pergunta se o usuário deseja ignorar e realizar o download novamente.
+echo "###################################"
+echo "### Verificando repositório local"
+
+if [ -d "${project_name}/.git" ] || git ls-remote -h $project_remote; then
+  read -r -p "Projeto já contém um repositório GIT local, deseja ignora-lo e clonar-lo novamente? [y/N] " response
+  case $response in
+    [yY][eE][sS]|[yY])
+       project_inited=""
+  esac
+fi
+
+#RN2.1 - Clone no repositório existente de uma importação anterior.
+if [ -z "$project_inited" ]; then
+
+	echo "###################################"
+	echo "### Verificando repositório remoto"
+	echo "### GitLab: ${project_remote}"
+
+	if git ls-remote -h $project_remote; then
+		project_inited=${project_name}-temp-git
+		if [ -d $project_inited ]; then
+			rm -rf $project_inited
+		fi
+		git clone $project_remote ${project_inited}
+	fi
+
+	if [ -d "$project_inited" ]; then
+		echo "Copiando o repositório GIT: $project_name"
+		rm -rf ${project_name}/.git
+		mv ${project_inited}/.git ${project_name}/
+	fi
+	
+	rm -rf $project_inited
+	cd $project_name
+
+        echo "###################################"
+	echo "### Iniciando branches remotas"
+
+#RN2.1 - Download de todas as branches remotas.
+  if [ -d ".git" ]; then
+    for remote in `git branch -r`
+       do
+         remotename=$(echo $remote | cut -d'/' -f 2,3,4,5,6) && echo "DEBUG: remote={${remote}} | remotename={${remotename}}"
+         if [ "$remotename" != "->" ] && [ "$remotename" != "HEAD" ]; then 
+           if [ -n "$(git branch | grep $remotename)"  ]
+              then
+                echo "Branch $remotename já existe no repositório local"
+              else
+                git branch $remotename --track $remote || echo "ERRO: ao recuperar branch $remotename"
+           fi
+         fi
+    done
+
+    git fetch --all
+    git pull --all
+
+    echo "###################################"
+    echo "### Verificando branch origin"
+
+    if [ -z "$(git branch | grep origin)" ]
+       then
+       git checkout -b origin
+    fi
+
+    git checkout -f master
+  fi
+
+else
+  cd $project_name
+#  git checkout -f master
+fi
+
+#RN3 - Importação do repositório CVS para GIT, com os parâmetros ``-a`` (todos os commits) e ``-S <skip_pattern>``.
+git cvsimport -a -i -S $ignored_files
