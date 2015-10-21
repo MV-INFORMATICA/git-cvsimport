@@ -27,7 +27,7 @@ group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
 project_remote=git@${endpoint_url}:$group_name/${project_name}.git
-$GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
 OPTIONS="Cvs2Git CvsImport"
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para

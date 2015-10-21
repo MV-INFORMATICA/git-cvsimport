@@ -6,29 +6,30 @@
 
 set -o errexit
 set -o pipefail
-set -o nounset
+#set -o nounset
 
 echo "============================================="
 echo "= Executando a importação  - Git CvsImport  ="
 echo "============================================="
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
+if [ -z "$1" ] || [ -z "$2" ]
   then
     echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
-    echo "ex:  git-cvsimport <group_name> <project_name> <cvs_module>"
+    echo "ex:  git-cvsimport <cvs_module> <project_name> <skip_pattern>"
     echo ""
     exit 1
 fi
 
-group_name=$1
+cvs_module=$1
 project_name=$2
-cvs_module=$3
 project_inited=${project_name}
+ignored_files=$3
+
 
 #RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
 if [ ! -d "$project_name" ]; then
-  cvs update -RCAd $project_name
+  cvs update -rV1-0 -RCAd $project_name
 fi
 
 #RN2 - Verifica se já existe uma importação anterior no repositório local.
@@ -36,7 +37,7 @@ fi
 echo "###################################"
 echo "### Verificando repositório local"
 
-if [ -d "${project_name}/.git" ] || git ls-remote -h $project_remote; then
+if [ -d "${project_name}/.git" ] || $(git ls-remote $project_remote); then
   read -r -p "Projeto já contém um repositório GIT local, deseja ignora-lo e clonar-lo novamente? [y/N] " response
   case $response in
     [yY][eE][sS]|[yY])
