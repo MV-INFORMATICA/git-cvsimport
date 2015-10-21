@@ -45,11 +45,13 @@ if [ -n "$skip_pattern" ]; then
 	echo "### Pattern: \"(?:${skip_pattern})\""
 	
 	cd cvs-repo/$project_name
-	ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})")
+	ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})") || ignore_list=""
 	for files in "${ignore_list}"; do
 		rm -rf $files
 	done
 	cd ../../
+
+	echo "###################################"
 fi
 
 
