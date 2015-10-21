@@ -1,0 +1,45 @@
+#!/bin/bash
+#### Description: Realiza a importação do CVS para GIT através da API "cvsimport"
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
+
+set -o errexit
+set -o pipefail
+#set -o nounset
+
+echo "============================================="
+echo "= Executando a importação  - Git CvsImport  ="
+echo "============================================="
+
+#Checkagem se os 2 parâmetros obrigatórios estão definidos
+if [ -z "$1" ] || [ -z "$2" ]
+  then
+    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+    echo "ex:  compare-cvsimport <cvs_module> <project_name> <skip_pattern>"
+    echo ""
+    exit 1
+fi
+
+cvs_module=$1
+project_name=$2
+project_inited=${project_name}
+skip_pattern=$3
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
+
+$GITCVS_HOME/git-cvsimport $cvs_module $project_name $skip_pattern
+git clone `pwd`/$project_name $project_name-cvsimport
+git -C $project_name-cvsimport checkout V1-0 || echo "Error: Não existe branch V1-0 para o projeto especificado"
+
+$GITCVS_HOME/cvs2git-import $cvs_module $project_name $skip_pattern
+mv $project_name $project_name-cvs2git
+git -C $project_name-cvs2git checkout V1-0
+
+rm -rf $project_name
+
+#RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
+if [ ! -d "$project_name" ]; then
+  cvs update -rV1-0 -RCAd $project_name
+fi
+
+meld $project_name $project_name-cvsimport $project_name-cvs2git
