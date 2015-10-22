@@ -6,40 +6,50 @@
 
 set -o errexit
 set -o pipefail
+set -o xtrace
 #set -o nounset
 
-echo "============================================="
-echo "= Executando a importação  - Git CvsImport  ="
-echo "============================================="
+echo "============================================================"
+echo "= Comparando Importações [ CVS x Git CvsImport x Cvs2Git ] ="
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
-if [ -z "$1" ] || [ -z "$2" ]
-  then
-    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
-    echo "ex:  compare-cvsimport <cvs_module> <project_name> <skip_pattern>"
-    echo ""
-    exit 1
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
+then
+	echo "Por favor informe a opções de acordo com os parâmetros abaixo:"
+	echo "ex:  compare-cvsimport <cvs_host> <cvs_root> <cvs_module> <project_name> <skip_pattern> <project_remote>"
+	echo ""
+	exit 1
 fi
 
-cvs_module=$1
-project_name=$2
-project_inited=${project_name}
-skip_pattern=$3
+base_path=${PWD}
+
+cvs_host=$1
+cvs_root=$2
+cvs_module=$3
+skip_pattern=$5
+
+project_name=$4
+project_remote=$6
+project_path=$base_path/$project_name
+
+project_inited=$project_name
 GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
 
-$GITCVS_HOME/git-cvsimport $cvs_module $project_name $skip_pattern
+#RN1 - Inicia o processo de importa através do método [CVSImport]"
+$GITCVS_HOME/git-cvsimport $cvs_host $cvs_root $cvs_module $project_name $skip_pattern $project_remote
 git clone `pwd`/$project_name $project_name-cvsimport
 git -C $project_name-cvsimport checkout V1-0 || echo "Error: Não existe branch V1-0 para o projeto especificado"
 
-$GITCVS_HOME/cvs2git-import $cvs_module $project_name $skip_pattern
+#RN2 - Inicia o processo de importa através do método [Cvs2Git]"
+$GITCVS_HOME/cvs2git-import $cvs_host $cvs_root $cvs_module $project_name $skip_pattern
 mv $project_name $project_name-cvs2git
 git -C $project_name-cvs2git checkout V1-0
 
-rm -rf $project_name
-
-#RN1 - inicia o projeto do CVS, caso ainda não esteja iniciado.
-if [ ! -d "$project_name" ]; then
-  cvs update -rV1-0 -RCAd $project_name
+#RN3 - Recupera o repositório de CVS na branch determinada
+if ! [ -d "$project_name" ]; then
+	rm -rf $project_name
+	cvs update -rV1-0 -RCAd $project_name
 fi
 
+#RN4 - Compara os resultados de importações através do app [Meld]
 meld $project_name $project_name-cvsimport $project_name-cvs2git
