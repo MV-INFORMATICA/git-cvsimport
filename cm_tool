@@ -1,0 +1,22 @@
+#!/bin/bash -ex
+
+file="no_such_file"    #use non existing file
+result=$(cvs -t status $file 2>&1)
+cvsroot=$(echo $result | sed  "/CVSROOT=(.*)\s/p")
+
+#cvsroot=~s/CVSROOT=(.*)/$1/
+#echo "matched part is ${BASH_REMATCH[@]}"
+
+echo "DEBUG2: \$cvsroot=$cvsroot"
+
+: <<'END'
+$cvsroot =~ s/^.*:(.*)$/$1/;    # remove any pserver stuff
+print "DEBUG3: \$cvsroot=\n$cvsroot\n";
+
+($cvsurl) = grep { s/open_connection_to_server \((.*)\)/$1/ } @result;
+cvsuserhost=$(echo $cvsurl | cut -d':' -f1 | cut -d'@')
+
+cvsuser=${cvsuserhost[0]}
+cvshost=${cvsuserhost[1]}
+print "DEBUG4: \$cvsurl=$cvsurl\n \$cvsuser=$cvsuser\n \$cvshost=$cvshost\n" ;
+END
