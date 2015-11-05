@@ -1,0 +1,16 @@
+#!/bin/bash -ex
+
+function cvs_info() {
+	file="no_such_file"    #use non existing file
+	result=$(cvs -t status $file 2>&1)
+	export CVS_ROOT=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
+	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
+
+	cvsuserhost=$(echo $CVS_URL | cut -d':' -f3)
+	cvsmodule_pattern="Reader_Lock\(${CVS_ROOT}"
+
+	export CVS_MODULE=$(echo "$result" | grep -Pzo "${cvsmodule_pattern}(.*?)\)") 
+	export CVS_MODULE=$([[ "$CVS_MODULE" =~ $cvsmodule_pattern(.*?)\) ]] && echo ${BASH_REMATCH[1]})
+	export CVS_USER=$(echo $cvsuserhost | cut -d'@' -f1)
+	export CVS_HOST=$(echo $cvsuserhost | cut -d'@' -f2)
+}

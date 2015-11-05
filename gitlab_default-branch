@@ -8,12 +8,13 @@
 
 set -o errexit
 set -o pipefail
-set -o nounset
+#set -o nounset
+#set -o xtrace
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 	echo "Selecione as branches do projeto para realizar a o procedimento:"
-	echo "ex:  protect-branches <GITLAB_ENDPOINT> <GITLAB_TOKEN> [<BRANCHES>]"
+	echo "ex:  protect-branches <GITLAB_ENDPOINT> <GITLAB_TOKEN> <GROUP_NAME/PROJECT_NAME> <DEFAULT_BRANCH>"
 	echo ""
 	exit 1
 fi
@@ -23,8 +24,7 @@ ENDPOINT=$1/api/v3
 TOKEN=$2
 GROUP_NAME=$(echo $3 | cut -d'/' -f1)
 PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
-
-ARGS=("$@")
+DEFAULT_BRANCH=$4
 
 echo "#### Criando repositório remoto"
 echo "### GitLab:       ${1}"
@@ -33,13 +33,11 @@ echo "### Project Name: ${PROJECT_NAME}"
 
 export API="curl --fail -sk -H 'Content-Type:application/json' -X PUT $ENDPOINT"
 
-for (( i=3;i<$#; i++)); do
-	echo "### Protecting branch: ${ARGS[${i}]}"
-	eval ${API}/projects/${GROUP_NAME}%2F${PROJECT_NAME}/repository/branches/${ARGS[${i}]}/protect?private_token=$TOKEN
-done
+echo "### Setting default branch: ${DEFAULT_BRANCH}"
+eval ${API}/projects/${GROUP_NAME}%2F${PROJECT_NAME}?private_token=$TOKEN -d \'{ \"default_branch\":\"${DEFAULT_BRANCH}\"}\'
 
 echo ""
 echo "============================================="
-echo "=      Branches protegidas com Sucesso      ="
+echo "=    Branch default definida com Sucesso    ="
 echo "============================================="
 

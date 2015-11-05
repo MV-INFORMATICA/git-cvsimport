@@ -6,6 +6,7 @@
 
 set -o errexit
 set -o pipefail
+#set -o xtrace
 #set -o nounset
 
 echo "============================================="
@@ -27,8 +28,12 @@ group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
 project_remote=git@${endpoint_url}:$group_name/${project_name}.git
-$GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
-OPTIONS="Cvs2Git CvsImport"
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
+OPTIONS="Cvs2Git CvsImport Comparar"
+
+#Extraindo variáveis do CVS
+source $GITCVS_HOME/cm_tool
+cvs_info
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
 #o 3 parâmetro <skip_pattern>.
@@ -44,19 +49,27 @@ echo "### Selecione o método de importação"
 
 select opt in $OPTIONS; do
         if [ "$opt" = "Cvs2Git" ]; then
-                $GITCVS_HOME/cvs2git-import $group_name $project_name
+		$GITCVS_HOME/cvs2git-import $CVS_HOST $CVS_ROOT	$CVS_MODULE $project_name $ignored_files
+		break
         elif [ "$opt" = "CvsImport" ]; then
-                $GITCVS_HOME/git-cvsimport $group_name $project_name
-        else
-            echo 
+                $GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
+		break
+        elif [ "$opt" = "Comparar" ]; then
+		$GITCVS_HOME/compare-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
+	else
+            echo
+	    break
         fi
 done
 
 echo "###################################"
 echo "### Exportando para o repo remoto"
 
+cd $project_name
+
 #RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
-read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
+#read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
+response=y
 case $response in
     [yY][eE][sS]|[yY]) 
         if [ -z "$(git remote)" ]; then
@@ -66,7 +79,7 @@ case $response in
 
 #RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
         if ! git ls-remote origin ; then
-           $GITCVS_HOME/create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
+           $GITCVS_HOME/gitlab_create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
         fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
@@ -84,12 +97,15 @@ case $response in
 	    fi;
 
 	    git push origin V1-0:master develop v$project_version
-            git push origin origin
-	    $GITCVS_HOME/protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
+            if git branch | grep origin; then
+	    	git push origin origin
+	    fi
+	    $GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
+	    $GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
           else
             git push --all
             git push --tags
-            $GITCVS_HOME/protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
+            $GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
         fi
         ;;
 esac

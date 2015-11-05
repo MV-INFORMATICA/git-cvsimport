@@ -6,48 +6,89 @@
 
 set -o errexit
 set -o pipefail
-set -o nounset
+#set -o xtrace
+#set -o nounset
 
 echo "============================================="
 echo "= Executando a importação  - Cvs2Git        ="
 echo "============================================="
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
   then
-    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
-    echo "ex:  cvs2git-import <group_name> <project_name> <cvs_module>"
+    echo "Por favor informe a opções de acordo com os parâmetros abaixo:"
+    echo "ex:  cvs2git-import <cvs_host> <cvs_root> <cvs_module> <project_name> <skip_pattern>"
     echo ""
     exit 1
 fi
 
-group_name=$1
-project_name=$2
+if [ -z "$CVS_USER" ]
+  then
+    echo "Por favor defina a variável de ambiente CVS_USER, conforme o exemplo baixo:"
+    echo "ex:  export CVS_USER=<nome.sobrenome>"
+    exit 1
+fi
+
+cvs_host=$1
+cvs_root=$2
 cvs_module=$3
-cvs_root=/u01/cvs/rps-rec/
+project_name=$4
+skip_pattern=$5
+
+base_path=${PWD}
+cvs_local_repo=$base_path/cvs-repo/${project_name}
+cvs2svn_tmp=$base_path/cvs2svn-${project_name}-tm
+project_path=$base_path/$project_name
 
 ## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
 if ! [ -d "cvs-repo" ]; then
-    mkdir cvs-repo
+	mkdir -p $base_pare/cvs-repo/CVSROOT
+	cvs -d $base_path/cvs-repo init
 fi
 
-scp -1 -r ${CVS_USER}@192.168.1.8:${cvs_root}${cvs_module}/$project_name cvs-repo/$project_name
+if [ -d "$cvs_local_repo" ]; then
+	rm -rf $cvs_local_repo
+fi
+
+scp -1 -r ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_local_repo
+
+## RN-01.1: Removendo arquivos ignorados
+if [ -n "$skip_pattern" ]; then
+	echo "###################################"
+	echo "### Exportando para o repo remoto"
+	echo "### Pattern: \"(?:${skip_pattern})\""
+	
+	cd $cvs_local_repo
+	ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})") || ignore_list=""
+	for files in "${ignore_list}"; do
+		rm -rf $files
+	done
+	cd $base_path
+
+	echo "###################################"
+fi
 
 ## RN-02: Gera os dumps de importação do CVS para SVN.
-mkdir cvs2svn-${project_name}-tmp
+if [ -d "${cvs2svn_tmp}" ]; then
+	rm -rf ${cvs2svn_tmp}
+fi
 
-cvs2git --blobfile=cvs2svn-${project_name}-tmp/git-blob.dat --dumpfile=cvs2svn-${project_name}-tmp/git-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  cvs-repo/$project_name/
+mkdir ${cvs2svn_tmp}
+
+cvs2git --blobfile=${cvs2svn_tmp}/git-blob.dat --dumpfile=${cvs2svn_tmp}/git-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  $cvs_local_repo
 
 ## RN-03: Cria o repositório local GIT.
-mkdir git-repo/$project_name/
-cd git-repo/$project_name/
+if [ -d "$project_path" ]; then
+	rm -rf $project_path
+fi
+mkdir $project_path
+cd $project_path
 git init
 
 ## RN-04: Importa os dumps do SVN para o repositório local GIT.
-cat ../../cvs2svn-${project_name}-tmp/git-blob.dat ../../cvs2svn-${project_name}-tmp/git-dump.dat | git fast-import
+cat ${cvs2svn_tmp}/git-blob.dat ${cvs2svn_tmp}/git-dump.dat | git fast-import
 
 ## RN-05: Conclusão da importação, mudança para branch master.
 git checkout
 
-#cd ../../
-#rm -rf cvs2svn-${project_name}-tmp
+rm -rf ${cvs2svn_tmp}
