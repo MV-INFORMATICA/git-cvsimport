@@ -9,7 +9,7 @@
 
 set -o errexit
 set -o pipefail
-set -o nounset
+#set -o nounset
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then

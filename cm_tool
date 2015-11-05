@@ -1,22 +1,16 @@
 #!/bin/bash -ex
 
-file="no_such_file"    #use non existing file
-result=$(cvs -t status $file 2>&1)
-cvsroot=$(echo $result | sed  "/CVSROOT=(.*)\s/p")
+function cvs_info() {
+	file="no_such_file"    #use non existing file
+	result=$(cvs -t status $file 2>&1)
+	export CVS_ROOT=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
+	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
 
-#cvsroot=~s/CVSROOT=(.*)/$1/
-#echo "matched part is ${BASH_REMATCH[@]}"
+	cvsuserhost=$(echo $CVS_URL | cut -d':' -f3)
+	cvsmodule_pattern="Reader_Lock\(${CVS_ROOT}"
 
-echo "DEBUG2: \$cvsroot=$cvsroot"
-
-: <<'END'
-$cvsroot =~ s/^.*:(.*)$/$1/;    # remove any pserver stuff
-print "DEBUG3: \$cvsroot=\n$cvsroot\n";
-
-($cvsurl) = grep { s/open_connection_to_server \((.*)\)/$1/ } @result;
-cvsuserhost=$(echo $cvsurl | cut -d':' -f1 | cut -d'@')
-
-cvsuser=${cvsuserhost[0]}
-cvshost=${cvsuserhost[1]}
-print "DEBUG4: \$cvsurl=$cvsurl\n \$cvsuser=$cvsuser\n \$cvshost=$cvshost\n" ;
-END
+	export CVS_MODULE=$(echo "$result" | grep -Pzo "${cvsmodule_pattern}(.*?)\)") 
+	export CVS_MODULE=$([[ "$CVS_MODULE" =~ $cvsmodule_pattern(.*?)\) ]] && echo ${BASH_REMATCH[1]})
+	export CVS_USER=$(echo $cvsuserhost | cut -d'@' -f1)
+	export CVS_HOST=$(echo $cvsuserhost | cut -d'@' -f2)
+}

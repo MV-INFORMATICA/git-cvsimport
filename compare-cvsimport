@@ -6,7 +6,7 @@
 
 set -o errexit
 set -o pipefail
-set -o xtrace
+#set -o xtrace
 #set -o nounset
 
 echo "============================================================"
@@ -53,3 +53,5 @@ fi
 
 #RN4 - Compara os resultados de importações através do app [Meld]
 meld $project_name $project_name-cvsimport $project_name-cvs2git
+
+rm -rf $project_name-cvsimport $project_name-cvs2git
