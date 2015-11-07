@@ -43,12 +43,12 @@ git -C $project_name-cvsimport checkout V1-0 || echo "Error: Não existe branch 
 #RN2 - Inicia o processo de importa através do método [Cvs2Git]"
 $GITCVS_HOME/cvs2git-import $cvs_host $cvs_root $cvs_module $project_name $skip_pattern
 mv $project_name $project_name-cvs2git
-git -C $project_name-cvs2git checkout V1-0
+git -C $project_name-cvs2git checkout V1-0 || echo "Error: Não existe branch V1-0 para o projeto especificado"
 
 #RN3 - Recupera o repositório de CVS na branch determinada
 if ! [ -d "$project_name" ]; then
 	rm -rf $project_name
-	cvs update -rV1-0 -RCAd $project_name
+	cvs update -rV1-0 -RCAd $project_name || cvs update -RCAd $project_name
 fi
 
 #RN4 - Compara os resultados de importações através do app [Meld]

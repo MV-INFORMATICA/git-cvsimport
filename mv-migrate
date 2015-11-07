@@ -15,11 +15,11 @@ echo "============================================="
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
-  then
-    echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
-    echo "ex:  mv-migrate <group_name> <project_name> <project_version> <skip_pattern>"
-    echo ""
-    exit 1
+then
+	echo "Selecione o projeto MVFOR para realizar a migração para GIT:"
+	echo "ex:  mv-migrate <group_name> <project_name> <project_version> <skip_pattern>"
+	echo ""
+	exit 1
 fi
 
 #Definindo variáveis
@@ -39,27 +39,29 @@ cvs_info
 #o 3 parâmetro <skip_pattern>.
 if [ -z "$4" ] || [[ "$group_name" == soulmv-* ]]; 
 then
-    ignored_files="cli_.*/|bin/"
+	ignored_files="cli_.*/|bin/"
 else
-    ignored_files="$4"
+	ignored_files="$4"
 fi
+
+echo "###################################"
+echo "### Realizando o ultimo commit no CVS"
+$GITCVS_HOME/cvs_lastCommit $project_name
+
 
 echo "###################################"
 echo "### Selecione o método de importação"
 
 select opt in $OPTIONS; do
-        if [ "$opt" = "Cvs2Git" ]; then
+	if [ "$opt" = "Cvs2Git" ]; then
 		$GITCVS_HOME/cvs2git-import $CVS_HOST $CVS_ROOT	$CVS_MODULE $project_name $ignored_files
 		break
-        elif [ "$opt" = "CvsImport" ]; then
-                $GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
+	elif [ "$opt" = "CvsImport" ]; then
+		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
 		break
-        elif [ "$opt" = "Comparar" ]; then
+	elif [ "$opt" = "Comparar" ]; then
 		$GITCVS_HOME/compare-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
-	else
-            echo
-	    break
-        fi
+	fi
 done
 
 echo "###################################"
@@ -69,43 +71,44 @@ cd $project_name
 
 #RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
 #read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
+echo -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
 response=y
 case $response in
-    [yY][eE][sS]|[yY]) 
-        if [ -z "$(git remote)" ]; then
-           echo "Incluindo configuração do repositório remoto"
-           git remote add origin $project_remote
-        fi
+	[yY][eE][sS]|[yY]) 
+		if [ -z "$(git remote)" ]; then
+			echo "Incluindo configuração do repositório remoto"
+			git remote add origin $project_remote
+		fi
 
 #RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
-        if ! git ls-remote origin ; then
-           $GITCVS_HOME/gitlab_create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
-        fi
+		if ! git ls-remote origin ; then
+			$GITCVS_HOME/gitlab_create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
+		fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
-	if [[  "$group_name" == soulmv-* ]]; 
-          then
-            if [ -n "$(git tag -l 'V1-0')" ]; then
-               git tag -d 'V1-0'
-            fi
-            git checkout V1-0
-            git tag -a v$project_version -m "Versão $project_version - Migração do CVS" \
-		    || echo "Tag v$project_version já existe no repositório"
+		if [[  "$group_name" == soulmv-* ]]; then
+			if [ -n "$(git tag -l 'V1-0')" ]; then
+				git tag -d 'V1-0'
+			fi
+			git checkout V1-0
+			git tag -a v$project_version -m "Versão $project_version - Migração do CVS" \
+			|| echo "Tag v$project_version já existe no repositório"
 
-	    if ! git branch | grep develop; then 
-	    	git checkout -b develop; 
-	    fi;
+			if ! git branch | grep develop; then 
+				git checkout -b develop; 
+			fi;
 
-	    git push origin V1-0:master develop v$project_version
-            if git branch | grep origin; then
-	    	git push origin origin
-	    fi
-	    $GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
-	    $GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
-          else
-            git push --all
-            git push --tags
-            $GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
-        fi
-        ;;
+			git push origin V1-0:master develop v$project_version
+			if git branch | grep origin; then
+				git push origin origin
+			fi
+			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
+			sleep 2
+			$GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
+		else
+			git push --all
+			git push --tags
+			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
+		fi
+	;;
 esac

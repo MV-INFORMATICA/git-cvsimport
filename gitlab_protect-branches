@@ -26,7 +26,8 @@ PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
 
 ARGS=("$@")
 
-echo "#### Criando repositório remoto"
+echo "################################"
+echo "#### Protegendo branch fixas"
 echo "### GitLab:       ${1}"
 echo "### Group Name:   ${GROUP_NAME}"
 echo "### Project Name: ${PROJECT_NAME}"
@@ -36,6 +37,7 @@ export API="curl --fail -sk -H 'Content-Type:application/json' -X PUT $ENDPOINT"
 for (( i=3;i<$#; i++)); do
 	echo "### Protecting branch: ${ARGS[${i}]}"
 	eval ${API}/projects/${GROUP_NAME}%2F${PROJECT_NAME}/repository/branches/${ARGS[${i}]}/protect?private_token=$TOKEN
+	echo
 done
 
 echo ""
