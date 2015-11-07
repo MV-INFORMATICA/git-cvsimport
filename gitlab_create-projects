@@ -26,6 +26,7 @@ GROUP_NAME=$(echo $3 | cut -d'/' -f1)
 PROJECT_NAME=$(echo $3 | cut -d'/' -f2)
 
 
+echo "################################"
 echo "#### Criando repositório remoto"
 echo "### GitLab:	${1}"
 echo "### Group Name:	${GROUP_NAME}"

@@ -1,0 +1,16 @@
+#!/bin/bash -ex
+
+PROJECT_NAME=$1
+
+echo $PWD
+
+[ -d $PROJECT_NAME ] && rm -rf $PROJECT_NAME
+
+cvs update -RCAd -rV1-0 $PROJECT_NAME
+cd $PROJECT_NAME
+
+if ! [ README.md ]; then
+	touch README.md
+	cvs add README.md
+	cvs commit -l -m "FIM do CVS projeto mv2git" README.md
+fi

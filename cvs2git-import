@@ -42,7 +42,7 @@ project_path=$base_path/$project_name
 
 ## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
 if ! [ -d "cvs-repo" ]; then
-	mkdir -p $base_pare/cvs-repo/CVSROOT
+	mkdir -p $base_path/cvs-repo/CVSROOT
 	cvs -d $base_path/cvs-repo init
 fi
 
