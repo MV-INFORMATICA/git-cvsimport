@@ -6,8 +6,55 @@
 
 set -o errexit
 set -o pipefail
-#set -o xtrace
+set -o xtrace
 #set -o nounset
+
+#Set Script Name variable
+SCRIPT=`basename ${BASH_SOURCE[0]}`
+
+#Initialize variables to default values.
+OPT_T="SOULMV"
+OPT_Y=0
+
+#Set fonts for Help.
+BOLD=`tput bold`
+NORM=`tput sgr0`
+
+#Help function
+function HELP {
+        exit 1
+}
+
+### Start getopts code ###
+
+#Parse command line flags
+#If an option should be followed by an argument, it should be followed by a ":".
+#Notice there is no ":" after "h". The leading ":" suppresses error messages from
+#getopts. This is required to get my unrecognized option code to work.
+while getopts t:y FLAG; do
+        case $FLAG in
+                t)  #set option "a"
+                        OPT_T=$OPTARG
+                ;;
+                y)  #set option "y"
+                        OPT_Y=1
+                ;;
+                h)  #show help
+                        HELP
+                ;;
+                \?) #unrecognized option - show help
+                        echo -e \\n"Option -${BOLD}$OPTARG${NORM} not allowed."
+                        HELP
+                        #If you just want to display a simple error message instead of the full
+                        #help, remove the 2 lines above and uncomment the 2 lines below.
+                        #echo -e "Use ${BOLD}$SCRIPT -h${NORM} to see the help documentation."\\n
+                        #exit 2
+                ;;
+        esac
+done
+
+shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
+### End getopts code ###
 
 echo "============================================="
 echo "= Executando a importação  - Cvs2Git        ="
@@ -29,6 +76,7 @@ if [ -z "$CVS_USER" ]
     exit 1
 fi
 
+
 cvs_host=$1
 cvs_root=$2
 cvs_module=$3
@@ -40,6 +88,7 @@ cvs_local_repo=$base_path/cvs-repo/${project_name}
 cvs2svn_tmp=$base_path/cvs2svn-${project_name}-tm
 project_path=$base_path/$project_name
 
+
 ## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
 if ! [ -d "cvs-repo" ]; then
 	mkdir -p $base_path/cvs-repo/CVSROOT
@@ -50,7 +99,27 @@ if [ -d "$cvs_local_repo" ]; then
 	rm -rf $cvs_local_repo
 fi
 
-scp -1 -r ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_local_repo
+mkdir -p $cvs_local_repo
+
+case "$OPT_T" in
+	PEP|pep)
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name* $base_path/cvs-repo/
+		cd $cvs_local_repo/../
+		list=$(find . -maxdepth 1 -type d | sort | grep -Pzo "${project_name}.*" | uniq)
+		for i in $list
+		do
+			echo $i
+			if [ "$i" != "$project_name" ]; then
+				mv $i $cvs_local_repo/$(echo "$i" | cut -d'.' -f3,4,5,6,7)
+			fi
+		done
+		#exit 0
+		;;
+	*)
+		scp -1 -r ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_local_repo
+		;;
+esac	
+
 
 ## RN-01.1: Removendo arquivos ignorados
 if [ -n "$skip_pattern" ]; then
@@ -68,7 +137,9 @@ if [ -n "$skip_pattern" ]; then
 	echo "###################################"
 fi
 
-## RN-02: Gera os dumps de importação do CVS para SVN.
+
+
+# RN-02: Gera os dumps de importação do CVS para SVN.
 if [ -d "${cvs2svn_tmp}" ]; then
 	rm -rf ${cvs2svn_tmp}
 fi

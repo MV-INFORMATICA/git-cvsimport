@@ -6,12 +6,55 @@
 
 set -o errexit
 set -o pipefail
-#set -o xtrace
+set -o xtrace
 #set -o nounset
 
-echo "============================================="
-echo "= Executando a importação do CVS para GIT   ="
-echo "============================================="
+#Set Script Name variable
+SCRIPT=`basename ${BASH_SOURCE[0]}`
+
+#Initialize variables to default values.
+OPT_T="SOULMV"
+OPT_Y=0
+
+#Set fonts for Help.
+BOLD=`tput bold`
+NORM=`tput sgr0`
+
+#Help function
+function HELP {
+	exit 1
+}
+
+### Start getopts code ###
+
+#Parse command line flags
+#If an option should be followed by an argument, it should be followed by a ":".
+#Notice there is no ":" after "h". The leading ":" suppresses error messages from
+#getopts. This is required to get my unrecognized option code to work.
+while getopts t:y FLAG; do
+	case $FLAG in
+		t)  #set option "a"
+			OPT_T=$OPTARG
+		;;
+		y)  #set option "y"
+			OPT_Y=1
+		;;
+		h)  #show help
+			HELP
+		;;
+		\?) #unrecognized option - show help
+			echo -e \\n"Option -${BOLD}$OPTARG${NORM} not allowed."
+			HELP
+			#If you just want to display a simple error message instead of the full
+			#help, remove the 2 lines above and uncomment the 2 lines below.
+			#echo -e "Use ${BOLD}$SCRIPT -h${NORM} to see the help documentation."\\n
+			#exit 2
+		;;
+	esac
+done
+
+shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
+### End getopts code ###
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
@@ -22,18 +65,26 @@ then
 	exit 1
 fi
 
+echo "============================================="
+echo "= Executando a importação do CVS para GIT   ="
+echo "============================================="
+
 #Definindo variáveis
 endpoint_url=$(echo $GITLAB_ENDPOINT | cut -d'/' -f3) #Ex: https://git.mv.com.br -> git.mv.com.br
 group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
-project_remote=git@${endpoint_url}:$group_name/${project_name}.git
+project_name_maven=$(echo "$project_name" | sed -r 's/\./-/g')
+project_remote=git@${endpoint_url}:$group_name/${project_name_maven}.git
 GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
 OPTIONS="Cvs2Git CvsImport Comparar"
+
 
 #Extraindo variáveis do CVS
 source $GITCVS_HOME/cm_tool
 cvs_info
+
+[ -z "$CVS_MODULE" ] && CVS_MODULE=/.
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
 #o 3 parâmetro <skip_pattern>.
@@ -44,8 +95,8 @@ else
 	ignored_files="$4"
 fi
 
-echo "###################################"
-echo "### Realizando o ultimo commit no CVS"
+#echo "###################################"
+#echo "### Realizando o ultimo commit no CVS"
 $GITCVS_HOME/cvs_lastCommit $project_name
 
 
@@ -54,7 +105,7 @@ echo "### Selecione o método de importação"
 
 select opt in $OPTIONS; do
 	if [ "$opt" = "Cvs2Git" ]; then
-		$GITCVS_HOME/cvs2git-import $CVS_HOST $CVS_ROOT	$CVS_MODULE $project_name $ignored_files
+		$GITCVS_HOME/cvs2git-import -t $OPT_T $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
 		break
 	elif [ "$opt" = "CvsImport" ]; then
 		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
@@ -67,12 +118,21 @@ done
 echo "###################################"
 echo "### Exportando para o repo remoto"
 
+
+mv $project_name $project_name_maven
+
+project_name=$project_name_maven
+
 cd $project_name
 
 #RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
 #read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
-echo -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
-response=y
+if [ $OPT_Y ]; then 
+	response=y
+else
+	read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N]" response
+fi
+
 case $response in
 	[yY][eE][sS]|[yY]) 
 		if [ -z "$(git remote)" ]; then
@@ -106,8 +166,8 @@ case $response in
 			sleep 2
 			$GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
 		else
-			git push --all
-			git push --tags
+			git push origin --all
+			git push origin --tags
 			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
 		fi
 	;;

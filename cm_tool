@@ -6,8 +6,8 @@ function cvs_info() {
 	export CVS_ROOT=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
 	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
 
-	cvsuserhost=$(echo $CVS_URL | cut -d':' -f3)
-	cvsmodule_pattern="Reader_Lock\(${CVS_ROOT}"
+	export cvsuserhost=$(echo $CVS_URL | cut -d':' -f3)
+	export cvsmodule_pattern="Reader_Lock\(${CVS_ROOT}"
 
 	export CVS_MODULE=$(echo "$result" | grep -Pzo "${cvsmodule_pattern}(.*?)\)") 
 	export CVS_MODULE=$([[ "$CVS_MODULE" =~ $cvsmodule_pattern(.*?)\) ]] && echo ${BASH_REMATCH[1]})
