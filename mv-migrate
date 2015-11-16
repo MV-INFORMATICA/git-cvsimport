@@ -39,7 +39,7 @@ cvs_info
 #o 3 parâmetro <skip_pattern>.
 if [ -z "$4" ] || [[ "$group_name" == soulmv-* ]]; 
 then
-	ignored_files="cli_.*/|bin/"
+	ignored_files="cli_.*/|bin/|.xvc"
 else
 	ignored_files="$4"
 fi
