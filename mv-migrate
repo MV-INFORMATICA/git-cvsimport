@@ -6,7 +6,7 @@
 
 set -o errexit
 set -o pipefail
-set -o xtrace
+#set -o xtrace
 #set -o nounset
 
 #Set Script Name variable
@@ -15,6 +15,7 @@ SCRIPT=`basename ${BASH_SOURCE[0]}`
 #Initialize variables to default values.
 OPT_T="SOULMV"
 OPT_Y=0
+export OPT_X
 
 #Set fonts for Help.
 BOLD=`tput bold`
@@ -31,13 +32,17 @@ function HELP {
 #If an option should be followed by an argument, it should be followed by a ":".
 #Notice there is no ":" after "h". The leading ":" suppresses error messages from
 #getopts. This is required to get my unrecognized option code to work.
-while getopts t:y FLAG; do
+while getopts t:yx FLAG; do
 	case $FLAG in
 		t)  #set option "a"
 			OPT_T=$OPTARG
 		;;
 		y)  #set option "y"
 			OPT_Y=1
+		;;
+		x)
+			OPT_X=-x
+			set -o xtrace
 		;;
 		h)  #show help
 			HELP
@@ -105,7 +110,7 @@ echo "### Selecione o método de importação"
 
 select opt in $OPTIONS; do
 	if [ "$opt" = "Cvs2Git" ]; then
-		$GITCVS_HOME/cvs2git-import -t $OPT_T $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
+		$GITCVS_HOME/cvs2git-import -t $OPT_T $OPT_X $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
 		break
 	elif [ "$opt" = "CvsImport" ]; then
 		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
