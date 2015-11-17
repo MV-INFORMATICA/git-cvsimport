@@ -6,7 +6,6 @@
 
 set -o errexit
 set -o pipefail
-set -o xtrace
 #set -o nounset
 
 #Set Script Name variable
@@ -31,7 +30,7 @@ function HELP {
 #If an option should be followed by an argument, it should be followed by a ":".
 #Notice there is no ":" after "h". The leading ":" suppresses error messages from
 #getopts. This is required to get my unrecognized option code to work.
-while getopts t:y FLAG; do
+while getopts t:yx FLAG; do
         case $FLAG in
                 t)  #set option "a"
                         OPT_T=$OPTARG
@@ -39,6 +38,9 @@ while getopts t:y FLAG; do
                 y)  #set option "y"
                         OPT_Y=1
                 ;;
+		x)
+			set -o xtrace
+		;;
                 h)  #show help
                         HELP
                 ;;
@@ -103,6 +105,9 @@ mkdir -p $cvs_local_repo
 
 case "$OPT_T" in
 	PEP|pep)
+		echo "##########################################"
+		echo "### Organizando submodulos do projeto PEP"
+
 		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name* $base_path/cvs-repo/
 		cd $cvs_local_repo/../
 		list=$(find . -maxdepth 1 -type d | sort | grep -Pzo "${project_name}.*" | uniq)
@@ -110,7 +115,11 @@ case "$OPT_T" in
 		do
 			echo $i
 			if [ "$i" != "$project_name" ]; then
-				mv $i $cvs_local_repo/$(echo "$i" | cut -d'.' -f3,4,5,6,7)
+				mv $i $cvs_local_repo/$i
+				sed -i.bkp,v '/<relativePath>/d' $cvs_local_repo/$i/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
+			else
+				echo "### Configurando Parent"
+				sed -i.bkp,v 's/<module>..\//<module>/g' $cvs_local_repo/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
 			fi
 		done
 		#exit 0
