@@ -4,59 +4,10 @@
 ####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
-set -o errexit
-set -o pipefail
-#set -o nounset
-
-#Set Script Name variable
-SCRIPT=`basename ${BASH_SOURCE[0]}`
-
-#Initialize variables to default values.
-OPT_T="SOULMV"
-OPT_Y=0
-
-#Set fonts for Help.
-BOLD=`tput bold`
-NORM=`tput sgr0`
-
-#Help function
-function HELP {
-        exit 1
-}
-
-### Start getopts code ###
-
-#Parse command line flags
-#If an option should be followed by an argument, it should be followed by a ":".
-#Notice there is no ":" after "h". The leading ":" suppresses error messages from
-#getopts. This is required to get my unrecognized option code to work.
-while getopts t:yx FLAG; do
-        case $FLAG in
-                t)  #set option "a"
-                        OPT_T=$OPTARG
-                ;;
-                y)  #set option "y"
-                        OPT_Y=1
-                ;;
-		x)
-			set -o xtrace
-		;;
-                h)  #show help
-                        HELP
-                ;;
-                \?) #unrecognized option - show help
-                        echo -e \\n"Option -${BOLD}$OPTARG${NORM} not allowed."
-                        HELP
-                        #If you just want to display a simple error message instead of the full
-                        #help, remove the 2 lines above and uncomment the 2 lines below.
-                        #echo -e "Use ${BOLD}$SCRIPT -h${NORM} to see the help documentation."\\n
-                        #exit 2
-                ;;
-        esac
-done
-
-shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
-### End getopts code ###
+#Carregando funções utilitárias
+source $GITCVS_HOME/cm_tool
+process_options $@
+shift $((OPTIND-1))
 
 echo "============================================="
 echo "= Executando a importação  - Cvs2Git        ="
@@ -125,7 +76,7 @@ case "$OPT_T" in
 		#exit 0
 		;;
 	*)
-		scp -1 -r ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_local_repo
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name/* $cvs_local_repo
 		;;
 esac	
 

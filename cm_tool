@@ -1,4 +1,8 @@
 #!/bin/bash 
+#### Description: Realiza a importação do CVS para GIT, com as APIs "git cvsimport" e "cvs2git"
+#### Written by: 
+####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
+####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
 function cvs_info() {
 	file="no_such_file"    #use non existing file
@@ -13,4 +17,63 @@ function cvs_info() {
 	export CVS_MODULE=$([[ "$CVS_MODULE" =~ $cvsmodule_pattern(.*?)\) ]] && echo ${BASH_REMATCH[1]})
 	export CVS_USER=$(echo $cvsuserhost | cut -d'@' -f1)
 	export CVS_HOST=$(echo $cvsuserhost | cut -d'@' -f2)
+}
+
+function process_options() {
+	set -o errexit
+	set -o pipefail
+	#set -o xtrace
+	#set -o nounset
+
+	#Set Script Name variable
+	SCRIPT=`basename ${BASH_SOURCE[0]}`
+
+	#Initialize variables to default values.
+	OPT_T="BASE"
+	OPT_Y=0
+	OPT_X=""
+
+	#Set fonts for Help.
+	BOLD=`tput bold`
+	NORM=`tput sgr0`
+
+	#Help function
+	function HELP {
+		exit 1
+	}
+
+	### Start getopts code ###
+
+	#Parse command line flags
+	#If an option should be followed by an argument, it should be followed by a ":".
+	#Notice there is no ":" after "h". The leading ":" suppresses error messages from
+	#getopts. This is required to get my unrecognized option code to work.
+	while getopts t:yx FLAG; do
+		case $FLAG in
+			t)  #set option "a"
+				OPT_T=$OPTARG
+			;;
+			y)  #set option "y"
+				OPT_Y=1
+			;;
+			x)
+				OPT_X=-x
+				set -o xtrace
+			;;
+			h)  #show help
+				HELP
+			;;
+			\?) #unrecognized option - show help
+				echo -e \\n"Option -${BOLD}$OPTARG${NORM} not allowed."
+				HELP
+				#If you just want to display a simple error message instead of the full
+				#help, remove the 2 lines above and uncomment the 2 lines below.
+				#echo -e "Use ${BOLD}$SCRIPT -h${NORM} to see the help documentation."\\n
+				#exit 2
+			;;
+		esac
+	done
+
+	shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
+	### End getopts code ###
 }
