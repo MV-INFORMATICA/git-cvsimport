@@ -4,10 +4,10 @@
 ####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
-set -o errexit
-set -o pipefail
-#set -o xtrace
-#set -o nounset
+#Carregando funções utilitárias
+source $GITCVS_HOME/cm_tool
+process_options $@
+shift $((OPTIND-1))
 
 echo "============================================="
 echo "= Executando a importação  - Cvs2Git        ="
@@ -29,6 +29,7 @@ if [ -z "$CVS_USER" ]
     exit 1
 fi
 
+
 cvs_host=$1
 cvs_root=$2
 cvs_module=$3
@@ -40,6 +41,7 @@ cvs_local_repo=$base_path/cvs-repo/${project_name}
 cvs2svn_tmp=$base_path/cvs2svn-${project_name}-tm
 project_path=$base_path/$project_name
 
+
 ## RN-01: Copia o repositório remote para a pasta local CVS-REPO.
 if ! [ -d "cvs-repo" ]; then
 	mkdir -p $base_path/cvs-repo/CVSROOT
@@ -50,7 +52,34 @@ if [ -d "$cvs_local_repo" ]; then
 	rm -rf $cvs_local_repo
 fi
 
-scp -1 -r ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_local_repo
+mkdir -p $cvs_local_repo
+
+case "$OPT_T" in
+	PEP|pep)
+		echo "##########################################"
+		echo "### Organizando submodulos do projeto PEP"
+
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name* $base_path/cvs-repo/
+		cd $cvs_local_repo/../
+		list=$(find . -maxdepth 1 -type d | sort | grep -Pzo "${project_name}.*" | uniq)
+		for i in $list
+		do
+			echo $i
+			if [ "$i" != "$project_name" ]; then
+				mv $i $cvs_local_repo/$i
+				sed -i.bkp,v '/<relativePath>/d' $cvs_local_repo/$i/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
+			else
+				echo "### Configurando Parent"
+				sed -i.bkp,v 's/<module>..\//<module>/g' $cvs_local_repo/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
+			fi
+		done
+		#exit 0
+		;;
+	*)
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name/* $cvs_local_repo
+		;;
+esac	
+
 
 ## RN-01.1: Removendo arquivos ignorados
 if [ -n "$skip_pattern" ]; then
@@ -68,7 +97,9 @@ if [ -n "$skip_pattern" ]; then
 	echo "###################################"
 fi
 
-## RN-02: Gera os dumps de importação do CVS para SVN.
+
+
+# RN-02: Gera os dumps de importação do CVS para SVN.
 if [ -d "${cvs2svn_tmp}" ]; then
 	rm -rf ${cvs2svn_tmp}
 fi

@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash 
 
 PROJECT_NAME=$1
 
@@ -6,7 +6,7 @@ echo $PWD
 
 [ -d $PROJECT_NAME ] && rm -rf $PROJECT_NAME
 
-cvs update -RCAd -rV1-0 $PROJECT_NAME
+cvs update -RCAd $PROJECT_NAME
 cd $PROJECT_NAME
 
 if ! [ -e  README.md ]; then

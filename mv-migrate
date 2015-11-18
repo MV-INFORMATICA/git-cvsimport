@@ -4,14 +4,10 @@
 ####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
-set -o errexit
-set -o pipefail
-#set -o xtrace
-#set -o nounset
-
-echo "============================================="
-echo "= Executando a importação do CVS para GIT   ="
-echo "============================================="
+#Carregando funções utilitárias
+source $GITCVS_HOME/cm_tool
+process_options $@
+shift $((OPTIND-1))
 
 #Checkagem se os 2 parâmetros obrigatórios estão definidos
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
@@ -22,30 +18,35 @@ then
 	exit 1
 fi
 
+echo "============================================="
+echo "= Executando a importação do CVS para GIT   ="
+echo "============================================="
+
 #Definindo variáveis
 endpoint_url=$(echo $GITLAB_ENDPOINT | cut -d'/' -f3) #Ex: https://git.mv.com.br -> git.mv.com.br
 group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
-project_remote=git@${endpoint_url}:$group_name/${project_name}.git
+project_name_maven=$(echo "$project_name" | sed -r 's/\./-/g')
+project_remote=git@${endpoint_url}:$group_name/${project_name_maven}.git
 GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
 OPTIONS="Cvs2Git CvsImport Comparar"
 
-#Extraindo variáveis do CVS
-source $GITCVS_HOME/cm_tool
 cvs_info
+
+[ -z "$CVS_MODULE" ] && CVS_MODULE=/.
 
 #Checkagem se o grupo de trabalho é soulmv para definição do valor padrão para
 #o 3 parâmetro <skip_pattern>.
-if [ -z "$4" ] || [[ "$group_name" == soulmv-* ]]; 
+if [ -z "$4" ] || [[  "$OPT_T" == SOULMV  ]]; 
 then
 	ignored_files="cli_.*/|bin/|.xvc"
 else
 	ignored_files="$4"
 fi
 
-echo "###################################"
-echo "### Realizando o ultimo commit no CVS"
+#echo "###################################"
+#echo "### Realizando o ultimo commit no CVS"
 $GITCVS_HOME/cvs_lastCommit $project_name
 
 
@@ -54,7 +55,7 @@ echo "### Selecione o método de importação"
 
 select opt in $OPTIONS; do
 	if [ "$opt" = "Cvs2Git" ]; then
-		$GITCVS_HOME/cvs2git-import $CVS_HOST $CVS_ROOT	$CVS_MODULE $project_name $ignored_files
+		$GITCVS_HOME/cvs2git-import -t $OPT_T $OPT_X $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
 		break
 	elif [ "$opt" = "CvsImport" ]; then
 		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
@@ -67,12 +68,21 @@ done
 echo "###################################"
 echo "### Exportando para o repo remoto"
 
+if [ $project_name != $project_name_maven ]; then
+	mv $project_name $project_name_maven
+	project_name=$project_name_maven
+fi
+
 cd $project_name
 
 #RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
 #read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
-echo -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
-response=y
+if [ $OPT_Y ]; then 
+	response=y
+else
+	read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N]" response
+fi
+
 case $response in
 	[yY][eE][sS]|[yY]) 
 		if [ -z "$(git remote)" ]; then
@@ -86,7 +96,7 @@ case $response in
 		fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
-		if [[  "$group_name" == soulmv-* ]]; then
+		if [[  "$OPT_T" == SOULMV  ]]; then
 			if [ -n "$(git tag -l 'V1-0')" ]; then
 				git tag -d 'V1-0'
 			fi
@@ -106,8 +116,8 @@ case $response in
 			sleep 2
 			$GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
 		else
-			git push --all
-			git push --tags
+			git push origin --all
+			git push origin --tags
 			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
 		fi
 	;;
