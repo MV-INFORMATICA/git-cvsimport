@@ -64,4 +64,16 @@ else
 	done
 fi
 
-$GITCVS_HOME/gitlab_remote-push -t $OPT_T $OPT_Y $OPT_X $group_name $project_name $project_version $ignored_files 
+#RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
+#read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
+if [ $OPT_Y ]; then
+	response=y
+else
+	read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N]" response
+fi
+
+case $response in
+	[yY][eE][sS]|[yY])
+		$GITCVS_HOME/gitlab_remote-push -t $OPT_T $OPT_Y $OPT_X $group_name $project_name $project_version $ignored_files 
+	;;
+esac

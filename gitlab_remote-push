@@ -44,50 +44,42 @@ fi
 
 cd $project_name
 
-#RN4 - Confirma se o usuário deseja empurrar a importação para o repositório remoto.
-#read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N] " response
-if [ $OPT_Y ]; then 
-	response=y
-else
-	read -r -p "Deseja enviar alterações do CVS para o repositório remoto do GIT? [y/N]" response
+
+if [[ -z "$(git remote &> /dev/null)" ]] || [[ -z "$(git remote origin &> /dev/null)" ]]; then
+	echo "Incluindo configuração do repositório remoto"
+	git remote add origin $project_remote
 fi
 
-case $response in
-	[yY][eE][sS]|[yY]) 
-		if [ -z "$(git remote)" ]; then
-			echo "Incluindo configuração do repositório remoto"
-			git remote add origin $project_remote
-		fi
-
 #RN5 - Caso o repositório remoto não exista será criado pelo script ``create-projects``
-		if ! git ls-remote origin ; then
-			$GITCVS_HOME/gitlab_create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
-		fi
+if ! git ls-remote origin ; then
+	$GITCVS_HOME/gitlab_create-projects $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name
+fi
 #RN6 - Empurra as branches e tags do projeto, caso o projeto seja identificado 
 #como pertencente do group SoulMV (ERP), as branches remotas seguirão o padrão:
-		if [[  "$OPT_T" == SOULMV  ]]; then
-			if [ -n "$(git tag -l 'V1-0')" ]; then
-				git tag -d 'V1-0'
-			fi
-			git checkout V1-0
-			git tag -a v$project_version -m "Versão $project_version - Migração do CVS" \
-			|| echo "Tag v$project_version já existe no repositório"
+if [[  "$OPT_T" == SOULMV  ]]; then
+	if [ -n "$(git tag -l 'V1-0')" ]; then
+		git tag -d 'V1-0'
+	fi
 
-			if ! git branch | grep develop; then 
-				git checkout -b develop; 
-			fi;
+	git checkout V1-0
+	git tag -a v$project_version -m "Versão $project_version - Migração do CVS" \
+		|| echo "Tag v$project_version já existe no repositório"
 
-			git push origin V1-0:master develop v$project_version
-			if git branch | grep origin; then
-				git push origin origin
-			fi
-			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
-			sleep 2
-			$GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
-		else
-			git push origin --all
-			git push origin --tags
-			$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
-		fi
-	;;
-esac
+	if ! git branch | grep develop; then 
+		git checkout -b develop; 
+	fi;
+
+	git push origin V1-0:master develop v$project_version
+	
+	if git branch | grep origin; then
+		git push origin origin
+	fi
+	
+	$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop master
+	sleep 2
+	$GITCVS_HOME/gitlab_default-branch $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name develop
+else
+	git push origin --all
+	git push origin --tags
+	$GITCVS_HOME/gitlab_protect-branches $GITLAB_ENDPOINT $GITLAB_TOKEN $group_name/$project_name master
+fi
