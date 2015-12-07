@@ -5,6 +5,7 @@
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
 #Carregando funções utilitárias
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
 source $GITCVS_HOME/cm_tool
 process_options $@
 shift $((OPTIND-1))
