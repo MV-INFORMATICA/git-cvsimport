@@ -4,7 +4,10 @@
 ####   - Tiago Costa - tiago.costa@mv.com.br on 10-2015
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
+source ~/.bashrc
+
 #Carregando funções utilitárias
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
 source $GITCVS_HOME/cm_tool
 process_options $@
 shift $((OPTIND-1))
@@ -27,9 +30,8 @@ endpoint_url=$(echo $GITLAB_ENDPOINT | cut -d'/' -f3) #Ex: https://git.mv.com.br
 group_name=$1
 project_name=$(echo $2 | cut -d'/' -f 1)
 project_version=$3
-project_name_maven=$(echo "$project_name" | sed -r 's/\./-/g')
+project_name_maven=$(echo "$project_name" | sed 's/\./-/g')
 project_remote=git@${endpoint_url}:$group_name/${project_name_maven}.git
-GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
 OPTIONS=("Cvs2Git" "CvsImport" "Comparar")
 
 cvs_info
