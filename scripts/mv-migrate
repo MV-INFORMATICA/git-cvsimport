@@ -7,7 +7,7 @@
 source ~/.bashrc
 
 #Carregando funções utilitárias
-GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport"
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport/scripts"
 source $GITCVS_HOME/cm_tool
 process_options $@
 shift $((OPTIND-1))
