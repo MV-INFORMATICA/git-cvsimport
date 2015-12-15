@@ -48,11 +48,13 @@ if ! [ -d "cvs-repo" ]; then
 	cvs -d $base_path/cvs-repo init
 fi
 
-if [ -d "$cvs_local_repo" ]; then
+if [ -d "$cvs_local_repo" ] && [ "$OPT_T" != "LOCAL" ] && [ "$OPT_T" != "local" ]; then
 	rm -rf $cvs_local_repo
 fi
 
-mkdir -p $cvs_local_repo
+if ! [ -d "cvs_local_repo" ]; then
+	mkdir -p $cvs_local_repo
+fi
 
 case "$OPT_T" in
 	PEP|pep)
@@ -107,6 +109,9 @@ case "$OPT_T" in
 				echo "#############"
 			fi
 		done
+		;;
+	LOCAL|local)
+			echo "Executando importação de repositórios local"
 		;;
 	*)
 		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name/* $cvs_local_repo
