@@ -5,6 +5,7 @@
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
 #Carregando funções utilitárias
+GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
 source $GITCVS_HOME/cm_tool
 process_options $@
 shift $((OPTIND-1))
@@ -48,32 +49,70 @@ if ! [ -d "cvs-repo" ]; then
 	cvs -d $base_path/cvs-repo init
 fi
 
-if [ -d "$cvs_local_repo" ]; then
+if [ -d "$cvs_local_repo" ] && [ "$OPT_T" != "LOCAL" ] && [ "$OPT_T" != "local" ]; then
 	rm -rf $cvs_local_repo
 fi
 
-mkdir -p $cvs_local_repo
+if ! [ -d "cvs_local_repo" ]; then
+	mkdir -p $cvs_local_repo
+fi
 
 case "$OPT_T" in
 	PEP|pep)
 		echo "##########################################"
 		echo "### Organizando submodulos do projeto PEP"
 
-		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name* $base_path/cvs-repo/
-		cd $cvs_local_repo/../
-		list=$(find . -maxdepth 1 -type d | sort | grep -Pzo "${project_name}.*" | uniq)
-		for i in $list
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/${project_name}* $base_path/cvs-repo/
+#		if [ -d $base_path/cvs-repo ]; then
+#			rm -rf $base_path/cvs-repo
+#			cp -R $base_path/cvs-repo-bkp/ $base_path/cvs-repo
+#		fi
+
+		cd $base_path/cvs-repo/
+		echo "##### Find Command: (find . -maxdepth 1 -type d | grep -Pzo \"${project_name}\.\w*?\n\" | sort | uniq)"
+		modules=$(find . -maxdepth 1 -type d | grep -Pzo "${project_name}\.\w*?\n" | sort | uniq)
+		
+		printf '%s\n' $modules
+		sleep 1
+
+		for m in $modules
 		do
-			echo $i
-			if [ "$i" != "$project_name" ]; then
-				mv $i $cvs_local_repo/$i
-				sed -i.bkp,v '/<relativePath>/d' $cvs_local_repo/$i/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
+			echo "#### Module Name: ${m}"
+			if [ "$m" == "pep.parent" ]; then
+				mv $m/* $cvs_local_repo
+			elif [ -d $m ]; then
+				echo "#"
+				mv $m $cvs_local_repo/$m
 			else
-				echo "### Configurando Parent"
-				sed -i.bkp,v 's/<module>..\//<module>/g' $cvs_local_repo/pom.xml,v || echo "Não existe arquivo POM.xml para o projeto $i"
+				mkdir $cvs_local_repo/$m
+			fi
+
+			if [ "$m" != "pep.parent" ]; then
+				echo "####### Find Sub Command: (find . -maxdepth 1 -type d | sort | grep -Pzo \"${m}.*\" | uniq)"
+				echo "####### ${PWD}"
+
+				if [ "${m}" == "pep.lista_paciente" ]; then
+					m_query="pep.\w*_paciente"
+				else
+					m_query=$m
+				fi
+
+				list=$(find . -maxdepth 1 -type d | grep -Pzo "${m_query}.*" | sort | uniq) || list=
+				echo "### SubModules"
+			       	printf '%s\n' $list
+				for i in $list
+				do
+					echo $i
+					if [ "$i" != "$m" ]; then
+						mv $i $cvs_local_repo/$m/$i
+					fi
+				done
+				echo "#############"
 			fi
 		done
-		#exit 0
+		;;
+	LOCAL|local)
+			echo "Executando importação de repositórios local"
 		;;
 	*)
 		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name/* $cvs_local_repo
@@ -121,5 +160,13 @@ cat ${cvs2svn_tmp}/git-blob.dat ${cvs2svn_tmp}/git-dump.dat | git fast-import
 
 ## RN-05: Conclusão da importação, mudança para branch master.
 git checkout
+
+if [[ "$OPT_T" == "PEP" || "$OPT_T" == "pep" ]]; then
+	sed -i "/<relativePath/d" */pom.xml */**/pom.xml
+	sed -i "s/<module>..\//<module>/g" */pom.xml */**/pom.xml
+	git add .
+	git commit -m "Refactory no maven para nova organização no GIT" 
+fi
+
 
 rm -rf ${cvs2svn_tmp}

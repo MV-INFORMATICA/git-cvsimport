@@ -30,8 +30,10 @@ function process_options() {
 
 	#Initialize variables to default values.
 	OPT_T="BASE"
-	OPT_Y=0
-	OPT_X=""
+	OPT_Y=
+	OPT_X=
+	OPT_i=
+	OPT_C=
 
 	#Set fonts for Help.
 	BOLD=`tput bold`
@@ -48,13 +50,19 @@ function process_options() {
 	#If an option should be followed by an argument, it should be followed by a ":".
 	#Notice there is no ":" after "h". The leading ":" suppresses error messages from
 	#getopts. This is required to get my unrecognized option code to work.
-	while getopts t:yx FLAG; do
+	while getopts 123Ct:yx FLAG; do
 		case $FLAG in
+			1|2|3)
+				OPT_i=$FLAG
+			;;
+			C)
+				OPT_C=1
+			;;
 			t)  #set option "a"
 				OPT_T=$OPTARG
 			;;
 			y)  #set option "y"
-				OPT_Y=1
+				OPT_Y=-y
 			;;
 			x)
 				OPT_X=-x
@@ -76,4 +84,19 @@ function process_options() {
 
 	shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
 	### End getopts code ###
+}
+
+function gitImportMethod() {
+	
+	opt=$1
+
+	if [ "$opt" = "Cvs2Git" ]; then
+		$GITCVS_HOME/cvs2git-import -t $OPT_T $OPT_X $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
+		break
+	elif [ "$opt" = "CvsImport" ]; then
+		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
+		break
+	elif [ "$opt" = "Comparar" ]; then
+		$GITCVS_HOME/compare-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
+	fi
 }
