@@ -7,9 +7,13 @@
 function cvs_info() {
 	file="no_such_file"    #use non existing file
 	result=$(cvs -t status $file 2>&1)
-	export CVS_ROOT=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
 	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
+	if [[ -z "$CVS_URL" ]]; then
+	       export CVS_URL=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
+	fi
 
+
+	export CVS_ROOT=$(echo $CVS_URL | cut -d':' -f4)
 	export cvsuserhost=$(echo $CVS_URL | cut -d':' -f3)
 	export cvsmodule_pattern="Reader_Lock\(${CVS_ROOT}"
 
