@@ -5,6 +5,7 @@
 ####   - Julio Tobias - julio.tobias@mv.com.br on 10-2015
 
 source ~/.bashrc
+source ~/.bash_profile
 
 #Carregando funções utilitárias
 GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )/git-cvsimport/scripts"
@@ -76,6 +77,16 @@ fi
 
 case $response in
 	[yY][eE][sS]|[yY])
-		$GITCVS_HOME/gitlab_remote-push -t $OPT_T $OPT_Y $OPT_X $group_name $project_name $project_version $ignored_files 
+		echo $OPT_T
+		if [[ "$OPT_T" == COLLECTION ]]; then
+			echo "### Exportando com COLLECTION"
+			modules=$(find . -maxdepth 1 -type d | grep -Pzo "${project_name}?[\.\-_]?\w*?\n" | sort | uniq)
+			for m in $modules
+			do
+				$GITCVS_HOME/gitlab_remote-push -t $OPT_T $OPT_Y $OPT_X $group_name $m $project_version $ignored_files || echo "Não foi possível transferir o projeto $m"
+			done
+		else
+			$GITCVS_HOME/gitlab_remote-push -t $OPT_T $OPT_Y $OPT_X $group_name $project_name $project_version $ignored_files 
+		fi
 	;;
 esac

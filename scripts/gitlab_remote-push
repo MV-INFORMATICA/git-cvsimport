@@ -34,7 +34,6 @@ project_remote=git@${endpoint_url}:$group_name/${project_name_maven}.git
 GITCVS_HOME="$( dirname "${BASH_SOURCE[0]}" )"
 
 
-
 echo "###################################"
 echo "### Exportando para o repo remoto"
 

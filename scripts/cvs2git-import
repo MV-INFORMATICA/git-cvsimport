@@ -38,7 +38,8 @@ project_name=$4
 skip_pattern=$5
 
 base_path=${PWD}
-cvs_local_repo=$base_path/cvs-repo/${project_name}
+cvs_repo=$base_path/cvs-repo
+cvs_local_repo=${cvs_repo}/${project_name}
 cvs2svn_tmp=$base_path/cvs2svn-${project_name}-tm
 project_path=$base_path/$project_name
 
@@ -57,23 +58,88 @@ if ! [ -d "cvs_local_repo" ]; then
 	mkdir -p $cvs_local_repo
 fi
 
+
+function load_modules() {
+	scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/${project_name}* $base_path/cvs-repo/
+	cd $base_path/cvs-repo/
+	echo "##### Find Command: (find . -maxdepth 1 -type d | grep -Pzo \"${project_name}?[\.\-_]\w*?\n\" | sort | uniq)"
+	modules=$(find . -maxdepth 1 -type d | grep -Pzo "${project_name}?[\.\-_]?\w*?\n" | sort | uniq)
+
+	printf '%s\n' $modules
+	sleep 1
+}
+
+function run_cvs2git() {
+	local project_name=$1
+	local cvs_local_repo=${cvs_repo}/${project_name}
+	local cvs2svn_tmp=$base_path/cvs2svn-${project_name}-tm
+	local project_path=$base_path/$project_name
+
+	## RN-01.1: Removendo arquivos ignorados
+	if [ -n "$skip_pattern" ]; then
+		echo "###################################"
+		echo "### Exportando para o repo remoto"
+		echo "### Pattern: \"(?:${skip_pattern})\""
+	
+		cd $cvs_local_repo
+		ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})") || ignore_list=""
+		for files in "${ignore_list}"; do
+			rm -rf $files
+		done
+		cd $base_path
+
+		echo "###################################"
+	fi
+
+	# RN-02: Gera os dumps de importação do CVS para SVN.
+	if [ -d "${cvs2svn_tmp}" ]; then
+		rm -rf ${cvs2svn_tmp}
+	fi
+
+	mkdir ${cvs2svn_tmp}
+
+	cvs2git --blobfile=${cvs2svn_tmp}/git-blob.dat --dumpfile=${cvs2svn_tmp}/git-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  $cvs_local_repo
+
+	## RN-03: Cria o repositório local GIT.
+	if [ -d "$project_path" ]; then
+		rm -rf $project_path
+	fi
+	mkdir $project_path
+	cd $project_path
+	git init
+
+	## RN-04: Importa os dumps do SVN para o repositório local GIT.
+	cat ${cvs2svn_tmp}/git-blob.dat ${cvs2svn_tmp}/git-dump.dat | git fast-import
+
+	## RN-05: Conclusão da importação, mudança para branch master.
+	git checkout
+
+	if [[ "$OPT_T" == "PEP" || "$OPT_T" == "pep" ]]; then
+		sed -i "/<relativePath/d" */pom.xml */**/pom.xml
+		sed -i "s/<module>..\//<module>/g" */pom.xml */**/pom.xml
+		git add .
+		git commit -m "Refactory no maven para nova organização no GIT" 
+	fi
+
+
+	rm -rf ${cvs2svn_tmp}
+}
+
 case "$OPT_T" in
+	COLLECTION|collection)
+		load_modules
+
+		for m in $modules
+		do
+			run_cvs2git $m || echo "Não foi possível importar o módulo :: $m"
+		done
+
+		exit 0
+	;;
 	PEP|pep)
 		echo "##########################################"
 		echo "### Organizando submodulos do projeto PEP"
-
-		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/${project_name}* $base_path/cvs-repo/
-#		if [ -d $base_path/cvs-repo ]; then
-#			rm -rf $base_path/cvs-repo
-#			cp -R $base_path/cvs-repo-bkp/ $base_path/cvs-repo
-#		fi
-
-		cd $base_path/cvs-repo/
-		echo "##### Find Command: (find . -maxdepth 1 -type d | grep -Pzo \"${project_name}\.\w*?\n\" | sort | uniq)"
-		modules=$(find . -maxdepth 1 -type d | grep -Pzo "${project_name}\.\w*?\n" | sort | uniq)
-		
-		printf '%s\n' $modules
-		sleep 1
+		load_modules
 
 		for m in $modules
 		do
@@ -115,58 +181,9 @@ case "$OPT_T" in
 			echo "Executando importação de repositórios local"
 		;;
 	*)
-		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name/* $cvs_local_repo
+		scp -1 -rp ${CVS_USER}@${cvs_host}:${cvs_root}${cvs_module}/$project_name $cvs_repo/
 		;;
 esac	
 
 
-## RN-01.1: Removendo arquivos ignorados
-if [ -n "$skip_pattern" ]; then
-	echo "###################################"
-	echo "### Exportando para o repo remoto"
-	echo "### Pattern: \"(?:${skip_pattern})\""
-	
-	cd $cvs_local_repo
-	ignore_list=$(find `pwd` | grep -P "(?:${skip_pattern})") || ignore_list=""
-	for files in "${ignore_list}"; do
-		rm -rf $files
-	done
-	cd $base_path
-
-	echo "###################################"
-fi
-
-
-
-# RN-02: Gera os dumps de importação do CVS para SVN.
-if [ -d "${cvs2svn_tmp}" ]; then
-	rm -rf ${cvs2svn_tmp}
-fi
-
-mkdir ${cvs2svn_tmp}
-
-cvs2git --blobfile=${cvs2svn_tmp}/git-blob.dat --dumpfile=${cvs2svn_tmp}/git-dump.dat  --username=cvs2git --encoding=UTF8 --fallback-encoding=cp1252  $cvs_local_repo
-
-## RN-03: Cria o repositório local GIT.
-if [ -d "$project_path" ]; then
-	rm -rf $project_path
-fi
-mkdir $project_path
-cd $project_path
-git init
-
-## RN-04: Importa os dumps do SVN para o repositório local GIT.
-cat ${cvs2svn_tmp}/git-blob.dat ${cvs2svn_tmp}/git-dump.dat | git fast-import
-
-## RN-05: Conclusão da importação, mudança para branch master.
-git checkout
-
-if [[ "$OPT_T" == "PEP" || "$OPT_T" == "pep" ]]; then
-	sed -i "/<relativePath/d" */pom.xml */**/pom.xml
-	sed -i "s/<module>..\//<module>/g" */pom.xml */**/pom.xml
-	git add .
-	git commit -m "Refactory no maven para nova organização no GIT" 
-fi
-
-
-rm -rf ${cvs2svn_tmp}
+run_cvs2git $project_name 

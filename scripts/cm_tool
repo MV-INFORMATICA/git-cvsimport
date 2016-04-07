@@ -6,7 +6,7 @@
 
 function cvs_info() {
 	file="no_such_file"    #use non existing file
-	result=$(cvs -t status $file 2>&1)
+	result=$(cvs -tn status $file 2>&1)
 	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
 	if [[ -z "$CVS_URL" ]]; then
 	       export CVS_URL=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
@@ -96,10 +96,8 @@ function gitImportMethod() {
 
 	if [ "$opt" = "Cvs2Git" ]; then
 		$GITCVS_HOME/cvs2git-import -t $OPT_T $OPT_X $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files 
-		break
 	elif [ "$opt" = "CvsImport" ]; then
 		$GITCVS_HOME/git-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
-		break
 	elif [ "$opt" = "Comparar" ]; then
 		$GITCVS_HOME/compare-cvsimport $CVS_HOST $CVS_ROOT $CVS_MODULE $project_name $ignored_files $project_remote
 	fi
