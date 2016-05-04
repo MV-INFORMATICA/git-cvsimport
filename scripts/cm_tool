@@ -6,7 +6,7 @@
 
 function cvs_info() {
 	file="no_such_file"    #use non existing file
-	result=$(cvs -tn status $file 2>&1)
+	result=$(cvs -t status $file 2>&1)
 	export CVS_URL=$(echo "$result" | grep -Pzo "open_connection_to_server \((.*?)\)" | cut -d'(' -f2 | cut -d')' -f1)
 	if [[ -z "$CVS_URL" ]]; then
 	       export CVS_URL=$(echo "$result" | grep -Pzo "CVSROOT=(.*)" | cut -d'=' -f2)
